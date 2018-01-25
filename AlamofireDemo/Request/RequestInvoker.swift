@@ -13,6 +13,7 @@ import Alamofire
 class RequestInvoker: NSObject {
     
     private var requestsQueue: [String : Request] = [:]
+    private let lock = NSLock()
     
     // MARK: - 单例
     static let sharedInstance = RequestInvoker()
@@ -43,7 +44,7 @@ class RequestInvoker: NSObject {
         
         let taskIdentifier = String(stringInterpolationSegment: dataRequest.task?.taskIdentifier)
         
-        requestsQueue[taskIdentifier] = request
+        addRequestToQueue(request, taskIdentifier: taskIdentifier)
         
         
         dataRequest.responseData { (responseData) in
@@ -58,8 +59,25 @@ class RequestInvoker: NSObject {
                 request.delegate?.requestDidFinish?(request)
             }
             
-            self.requestsQueue.removeValue(forKey: taskIdentifier)
+            self.removeRequestFromQueue(taskIdentifier: taskIdentifier)
+            
+            
+            print("queue:\(self.requestsQueue)")
         }
+    }
+    
+    private func addRequestToQueue(_ request: Request, taskIdentifier: String) {
+        
+        lock.lock()
+        requestsQueue[taskIdentifier] = request
+        lock.unlock()
+    }
+    
+    private func removeRequestFromQueue(taskIdentifier: String) {
+        
+        lock.lock()
+        requestsQueue.removeValue(forKey: taskIdentifier)
+        lock.unlock()
     }
     
     public func cancelRequest(_ request: Request) {
